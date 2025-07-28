@@ -60,7 +60,7 @@ if [ "${#entries_files[@]}" -eq 0 ]; then
   echo "entries: {}" >> "$MEGA_INDEX" 
   echo "Aucun index valide trouvé, fichier vide créé : $MEGA_INDEX"
 else
-  BATCH=500
+  BATCH=200
   total=${#entries_files[@]}
   batch_num=0
   
