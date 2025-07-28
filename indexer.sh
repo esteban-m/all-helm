@@ -56,7 +56,8 @@ for f in "${files[@]}"; do
 done
 
 if [ "${#entries_files[@]}" -eq 0 ]; then
-  echo "entries: {}" > "$MEGA_INDEX"
+  echo "apiVersion: v1" > "$MEGA_INDEX"
+  echo "entries: {}" >> "$MEGA_INDEX" 
   echo "Aucun index valide trouvé, fichier vide créé : $MEGA_INDEX"
 else
   BATCH=100
@@ -73,7 +74,9 @@ else
   yq ea '. as $item ireduce ({}; . * $item )' "${intermediates[@]}" > "$TMPDIR/fused.yaml"
   echo "Fusion des fichiers intermédiaires => $TMPDIR/fused.yaml"
   echo "Enregistrement dans le Mega Index"
-  mv "$TMPDIR/fused.yaml" "$MEGA_INDEX"
+  echo "apiVersion: v1" > "$MEGA_INDEX"
+  echo "entries:" >> "$MEGA_INDEX"
+  yq ea '.entries = load("'$TMPDIR'/fused.yaml")' -n > "$MEGA_INDEX"
   echo "Enregistrement dans le Mega Index => $MEGA_INDEX"
   echo "Suppression des fichiers intermédiaires"
   rm -f "${intermediates[@]}"
