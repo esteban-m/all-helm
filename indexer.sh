@@ -10,7 +10,6 @@ PER_REQ_TIMEOUT=8 # Timeout par URL en secondes
 
 pids=()
 files=()
-
 process_url_bg() {
   local url="$1"
   local outfile="$2"
@@ -21,6 +20,14 @@ process_url_bg() {
     if echo "$content" | yq e '.' - >/dev/null 2>&1; then
       entries=$(echo "$content" | yq e '.entries // {}' -)
       if [[ $(echo "$entries" | yq e 'length' -) -ne 0 ]]; then
+        # Extraire le chemin de base de l'URL source (tout jusqu'au dernier /)
+        base_url=$(echo "$url" | sed -E 's|/[^/]*$||')
+        
+        # Remplacer les URLs relatives par des URLs absolues
+        entries=$(echo "$entries" | yq e '(.. | select(has("urls")).urls) |= map(
+          select(. | test("^https?://")) // "'$base_url'" + "/" + .
+        )' -)
+        
         echo "$entries" > "$outfile"
         echo "✔︎ [$url] => OK"
         return
@@ -34,7 +41,10 @@ process_url_bg() {
   fi
 }
 
-while IFS= read -r url || [ -n "$url" ]; do
+# Trier et dédupliquer les URLs avant traitement
+SORTED_URLS=$(sort -u "$INPUT_FILE")
+
+while IFS= read -r url; do
   [ -z "$url" ] && continue
   tmpfile="$TMPDIR/$(date +%s%N).yaml"
   process_url_bg "$url" "$tmpfile" &
@@ -44,7 +54,7 @@ while IFS= read -r url || [ -n "$url" ]; do
   while (( $(jobs -rp | wc -l) >= NUM_JOBS )); do
     wait -n
   done
-done < "$INPUT_FILE"
+done <<< "$SORTED_URLS"
 
 wait
 
