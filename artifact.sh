@@ -29,8 +29,8 @@ while [[ $offset -lt $total ]]; do
     --data-urlencode "kind=0" \
     -H "accept: application/json")
     
-  # Extraire tous les URLs du résultat
-  mapfile -t extracted_urls < <(echo "$page" | jq -r '.[].url' | grep -v '^null$')
+  # Extraire les URLs uniquement des publishers vérifiés
+  mapfile -t extracted_urls < <(echo "$page" | jq -r '.[] | select(.verified_publisher == true) | .url' | grep -v '^null$')
   for url in "${extracted_urls[@]}"; do
     urls["$url"]=1
   done
