@@ -60,25 +60,38 @@ if [ "${#entries_files[@]}" -eq 0 ]; then
   echo "entries: {}" >> "$MEGA_INDEX" 
   echo "Aucun index valide trouvé, fichier vide créé : $MEGA_INDEX"
 else
-  BATCH=100
-  intermediates=()
+  BATCH=1000
   total=${#entries_files[@]}
+  batch_num=0
+  
   for ((i=0; i<total; i+=BATCH)); do
     echo "Processing batch $i of $total"
     files=("${entries_files[@]:i:BATCH}")
-    out="$TMPDIR/intermediate_$i.yaml"
-    yq ea '. as $item ireduce ({}; . * $item )' "${files[@]}" > "$out"
-    intermediates+=( "$out" )
+    
+    # Créer le répertoire pour ce batch si nécessaire
+    batch_dir="tpl/$batch_num"
+    mkdir -p "$batch_dir"
+    
+    # Créer l'index pour ce batch
+    batch_index="$batch_dir/index.yaml"
+    echo "apiVersion: v1" > "$batch_index"
+    echo "entries:" >> "$batch_index"
+    
+    # Fusionner les fichiers de ce batch
+    yq ea '. as $item ireduce ({}; . * $item )' "${files[@]}" > "$TMPDIR/batch_$batch_num.yaml"
+    yq ea '.entries = load("'$TMPDIR'/batch_'$batch_num'.yaml")' -n >> "$batch_index"
+    
+    rm -f "$TMPDIR/batch_$batch_num.yaml"
+    echo "Batch $batch_num créé => $batch_index"
+    
+    ((batch_num++))
   done
-  echo "Fusion des fichiers intermédiaires"
-  yq ea '. as $item ireduce ({}; . * $item )' "${intermediates[@]}" > "$TMPDIR/fused.yaml"
-  echo "Fusion des fichiers intermédiaires => $TMPDIR/fused.yaml"
-  echo "Enregistrement dans le Mega Index"
+  
+  echo "Création des index par batch terminée"
+  
+  # Créer l'index principal qui référence tous les batch
   echo "apiVersion: v1" > "$MEGA_INDEX"
   echo "entries:" >> "$MEGA_INDEX"
-  yq ea '.entries = load("'$TMPDIR'/fused.yaml")' -n > "$MEGA_INDEX"
-  echo "Enregistrement dans le Mega Index => $MEGA_INDEX"
-  echo "Suppression des fichiers intermédiaires"
-  rm -f "${intermediates[@]}"
-  echo "Suppression des fichiers intermédiaires => OK"
+  yq ea '. as $item ireduce ({}; . * $item )' tpl/*/index.yaml >> "$MEGA_INDEX"
+  echo "Index principal créé => $MEGA_INDEX"
 fi
