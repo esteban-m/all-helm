@@ -60,7 +60,7 @@ if [ "${#entries_files[@]}" -eq 0 ]; then
   echo "entries: {}" >> "$MEGA_INDEX" 
   echo "Aucun index valide trouvé, fichier vide créé : $MEGA_INDEX"
 else
-  BATCH=1000
+  BATCH=500
   total=${#entries_files[@]}
   batch_num=0
   
@@ -75,7 +75,7 @@ else
     # Créer l'index pour ce batch
     batch_index="$batch_dir/index.yaml"
     echo "apiVersion: v1" > "$batch_index"
-    echo "entries:" >> "$batch_index"
+    #echo "entries:" >> "$batch_index"
     
     # Fusionner les fichiers de ce batch
     yq ea '. as $item ireduce ({}; . * $item )' "${files[@]}" > "$TMPDIR/batch_$batch_num.yaml"
